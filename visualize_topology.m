@@ -16,8 +16,10 @@ for iter = 1:500
     for r = 1:N_rods
         b1 = rods.ball1(r);
         b2 = rods.ball2(r);
-        if b1 == b2, continue; end  % 悬空杆
-        
+        % 跳过任一端没有小球编号的杆（半连接或无连接的杆在力计算中不参与）
+        if b1 == 0 || b2 == 0, continue; end
+        if b1 == b2, continue; end  % 悬空杆（两端属于同一小球）
+
         diff = pos(b2,:) - pos(b1,:);
         dist = max(norm(diff), 1e-6);
         f = (dist - 2.0) * diff / dist;  % 目标距离为2
@@ -58,14 +60,27 @@ rod_colors = [0.2 0.6 1.0;   % 杆1：蓝
 for r = 1:N_rods
     b1 = rods.ball1(r);
     b2 = rods.ball2(r);
-    
-    if b1 == b2
-        % 悬空杆：两端在同一小球，向外延伸一小段
-        p1 = pos(b1,:);
-        p2 = p1 + randn(1,3) * 0.5;
-    else
-        p1 = pos(b1,:);
+    % 处理各种端点情况：0 表示该端没有小球
+    if b1 == 0 && b2 == 0
+        % 两端都无小球：跳过绘制
+        continue;
+    elseif b1 == 0
+        % 仅 b2 存在：从 b2 向外绘制半根杆
         p2 = pos(b2,:);
+        p1 = p2 + (randn(1,3) / norm(randn(1,3)+1e-6)) * 1.0;
+    elseif b2 == 0
+        % 仅 b1 存在：从 b1 向外绘制半根杆
+        p1 = pos(b1,:);
+        p2 = p1 + (randn(1,3) / norm(randn(1,3)+1e-6)) * 1.0;
+    else
+        if b1 == b2
+            % 悬空杆：两端在同一小球，向外延伸一小段
+            p1 = pos(b1,:);
+            p2 = p1 + randn(1,3) * 0.5;
+        else
+            p1 = pos(b1,:);
+            p2 = pos(b2,:);
+        end
     end
     
     % 绘制杆线

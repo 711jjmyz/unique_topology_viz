@@ -1,12 +1,20 @@
-function [balls, rods] = parse_topology(x_sol, A)
-% 从64个变量的解中，识别小球节点和杆件信息
+function [balls, rods] = parse_topology(x_sol, A, a5)
+% 解析拓扑：基于 ILP 解 x_sol 和邻接矩阵 A，识别小球（nodes）与杆（rods）关系
+% 说明：
+% - 输入变量索引与 build_constraints 中的定义一致。
+% - a5 用于指示每根杆端点是否应存在小球（参见用户说明）。
 
-N = 4;
-idx = @(i,k,j,n) (i-1)*16 + (k-1)*8 + (j-1)*2 + n;
+N = size(A,1);
+if nargin < 3
+    a5 = zeros(N,1);
+end
 
-%% 建立端点连接表
-% endpoint_conn(i,k) = {(j,n), ...} 表示杆i端k连接了哪些端点
-endpoint_conn = cell(N, 2);
+% 索引函数: v(i,k,j,n)
+idx = @(i,k,j,n) (i-1)*(4*N) + (k-1)*(2*N) + (j-1)*2 + n;
+
+% 先收集每个端点实际的连接信息（基于 x_sol）
+endpoint_conn = cell(N,2);
+conn_count = zeros(N,2); % 每个端点与其他端点的直接连接数
 for i = 1:N
     for k = 1:2
         endpoint_conn{i,k} = [];
@@ -15,70 +23,117 @@ for i = 1:N
             for n = 1:2
                 if x_sol(idx(i,k,j,n)) == 1
                     endpoint_conn{i,k} = [endpoint_conn{i,k}; j, n];
+                    conn_count(i,k) = conn_count(i,k) + 1;
                 end
             end
         end
     end
 end
 
-%% 聚类识别小球
-% 每个端点 (i,k) 是一个节点，共8个端点
-% 如果两个端点相连，则合并到同一个小球
-
-parent = 1:(2*N);  % 端点编号: (i-1)*2+k
-ep_id = @(i,k) (i-1)*2 + k;
-
-function r = find_root(parent, x)
-    while parent(x) ~= x
-        x = parent(x);
-    end
-    r = x;
-end
-
-% Union操作
+% 决定哪些端点应当被视为有小球（include_endpoint = true）
+include_endpoint = false(N,2);
 for i = 1:N
+    total_conn = sum(conn_count(i,:));
     for k = 1:2
-        conns = endpoint_conn{i,k};
-        for c = 1:size(conns, 1)
-            j = conns(c, 1);
-            n = conns(c, 2);
-            % 合并端点 (i,k) 和 (j,n)
-            ri = find_root(parent, ep_id(i,k));
-            rj = find_root(parent, ep_id(j,n));
-            if ri ~= rj
-                parent(ri) = rj;
-            end 
+        if conn_count(i,k) > 0
+            include_endpoint(i,k) = true; % 实际连到其它端点，必然参与小球组
+        else
+            if a5(i) == 1
+                include_endpoint(i,k) = true; % a5=1 表示两端都有小球
+            else
+                if total_conn == 0
+                    include_endpoint(i,k) = false; % a5=0 且四个连接变量均为0：既不连杆也不连球
+                else
+                    include_endpoint(i,k) = false; % a5=0 且有部分连接：另一端既不连杆也不连球
+                end
+            end
         end
     end
 end
 
-%% 生成小球列表
-ball_map = containers.Map('KeyType','int32','ValueType','int32');
-ball_count = 0;
-for ep = 1:8
-    root = find_root(parent, ep);
-    if ~isKey(ball_map, int32(root))
-        ball_count = ball_count + 1;
-        ball_map(int32(root)) = ball_count;
-    end
-end
-
-% balls结构体
-balls = struct();
-balls.count = ball_count;
-balls.ep_to_ball = zeros(N, 2);  % 端点归属的小球编号
+% 为被包含的端点建立并查集，合并那些通过 x_sol 连接的端点，得到小球聚类
+% 我们只对 include_endpoint == true 的端点进行聚类
+ep_index = zeros(N,2); % 为被包含的端点分配连续 id
+cur = 0;
 for i = 1:N
     for k = 1:2
-        root = find_root(parent, ep_id(i,k));
-        balls.ep_to_ball(i,k) = ball_map(int32(root));
+        if include_endpoint(i,k)
+            cur = cur + 1;
+            ep_index(i,k) = cur;
+        end
     end
 end
 
-% rods结构体
+parent = 1:cur;
+function r = find_root(p, x)
+    while p(x) ~= x
+        x = p(x);
+    end
+    r = x;
+end
+
+% Union 操作：遍历所有被包含的端点上的连接
+for i = 1:N
+    for k = 1:2
+        if ~include_endpoint(i,k), continue; end
+        conns = endpoint_conn{i,k};
+        for c = 1:size(conns,1)
+            j = conns(c,1); n = conns(c,2);
+            if ~include_endpoint(j,n)
+                % 如果目标端点原本被标记为不包含（按 a5 规则），但 x_sol 表示有连接，
+                % 那么强制包含它（以保证连通性一致性）并分配 id
+                cur = cur + 1;
+                ep_index(j,n) = cur;
+                include_endpoint(j,n) = true;
+                parent(cur) = cur;
+            end
+            id1 = ep_index(i,k);
+            id2 = ep_index(j,n);
+            if id1 > 0 && id2 > 0
+                r1 = find_root(parent, id1);
+                r2 = find_root(parent, id2);
+                if r1 ~= r2
+                    parent(r1) = r2;
+                end
+            end
+        end
+    end
+end
+
+% 生成小球映射：每个并查集根对应一个球
+ball_map = containers.Map('KeyType','int32','ValueType','int32');
+ball_count = 0;
+ep_root = zeros(cur,1);
+for id = 1:cur
+    ep_root(id) = find_root(parent, id);
+    r = ep_root(id);
+    if ~isKey(ball_map, int32(r))
+        ball_count = ball_count + 1;
+        ball_map(int32(r)) = ball_count;
+    end
+end
+
+% balls 结构体
+balls = struct();
+balls.count = ball_count;
+balls.ep_to_ball = zeros(N,2); % 若端点没有小球则为0
+for i = 1:N
+    for k = 1:2
+        id = ep_index(i,k);
+        if id == 0
+            balls.ep_to_ball(i,k) = 0;
+        else
+            root = ep_root(id);
+            balls.ep_to_ball(i,k) = ball_map(int32(root));
+        end
+    end
+end
+
+% rods 结构体：每根杆对应两个端点的小球编号（0 表示无小球）
 rods = struct();
 rods.count = N;
-rods.ball1 = balls.ep_to_ball(:,1);  % 每根杆端点1对应的小球
-rods.ball2 = balls.ep_to_ball(:,2);  % 每根杆端点2对应的小球
+rods.ball1 = balls.ep_to_ball(:,1);
+rods.ball2 = balls.ep_to_ball(:,2);
 
-fprintf('识别到 %d 个小球节点，%d 根杆\n', ball_count, N);
+fprintf('识别到 %d 个小球节点，%d 根杆（部分端点可能无小球，标记为0）。\n', ball_count, N);
 end
