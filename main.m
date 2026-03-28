@@ -1,19 +1,25 @@
 clc; clear; close all;
 
-% ===== 用户输入 =====
-A = [0 1 1 0;
-     1 0 1 0;
-     1 1 0 1;
-     0 0 1 0];
+% 连通的 10x10 邻接矩阵示例
+A = [0 1 0 0 0 0 0 0 1 1;
+	1 0 1 0 0 0 0 0 0 0;
+	0 1 0 1 0 0 0 0 0 0;
+	0 0 1 0 1 0 0 0 0 0;
+	0 0 0 1 0 1 0 0 0 0;
+	0 0 0 0 1 0 1 0 0 0;
+	0 0 0 0 0 1 0 1 0 0;
+	0 0 0 0 0 0 1 0 1 0;
+	1 0 0 0 0 0 0 1 0 1;
+	1 0 0 0 0 0 0 0 1 0];
 
-a5 = [0; 0; 1; 1];
+a5 = [1;1;1;1;1;1;1;1;1;1]; % 保持默认：每根杆两端都有小球
 
 % ===== 流程调用 =====
 fprintf('===== Step 1: 构建约束 =====\n');
 [Aeq, beq, Aineq, bineq, lb, ub, intcon] = build_constraints(A);
 
 fprintf('===== Step 2: ILP求解 =====\n');
-[x_sol, is_unique] = solve_topology(Aeq, beq, Aineq, bineq, lb, ub, intcon);
+[x_sol, is_unique] = solve_topology(Aeq, beq, Aineq, bineq, lb, ub, intcon, A);
 
 fprintf('===== Step 3: 解析拓扑 =====\n');
 [balls, rods] = parse_topology(x_sol, A, a5);

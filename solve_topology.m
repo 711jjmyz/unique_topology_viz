@@ -1,6 +1,7 @@
-function [x_sol, is_unique] = solve_topology(Aeq, beq, Aineq, bineq, lb, ub, intcon)
+function [x_sol, is_unique] = solve_topology(Aeq, beq, Aineq, bineq, lb, ub, intcon, A)
 
-nVars = 64; %变量总数
+N = size(A, 1);       % 杆数
+nVars = 4 * N * N;    % v(i,k,j,n) 变量总数
 
 f = zeros(nVars, 1);  % 无目标函数（纯可行解求解）
 

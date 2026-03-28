@@ -50,11 +50,24 @@ xlabel('X'); ylabel('Y'); zlabel('Z');
 title('连杆机构拓扑结构（三维）', 'FontSize', 14);
 view(35, 25);
 
-% 颜色定义
-rod_colors = [0.2 0.6 1.0;   % 杆1：蓝
-              1.0 0.4 0.2;   % 杆2：橙
-              0.2 0.8 0.4;   % 杆3：绿
-              0.8 0.2 0.8];  % 杆4：紫
+% 颜色定义：根据杆数动态生成足够的颜色，避免索引越界
+if N_rods <= 0
+    rod_colors = [0.2 0.6 1.0];
+else
+    % 优先使用 MATLAB 内置调色板生成 N_rods 种颜色
+    try
+        rod_colors = lines(N_rods);
+    catch
+        % 如果环境中没有 lines（旧版本），回退到可重复的基础颜色
+        base = [0.2 0.6 1.0;
+                1.0 0.4 0.2;
+                0.2 0.8 0.4;
+                0.8 0.2 0.8];
+        rep = ceil(N_rods / size(base,1));
+        rod_colors = repmat(base, rep, 1);
+        rod_colors = rod_colors(1:N_rods, :);
+    end
+end
 
 %% 绘制杆（cylinder模拟）
 for r = 1:N_rods
