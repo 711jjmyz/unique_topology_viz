@@ -27,9 +27,9 @@ end
 
 fprintf('\n--- 唯一性验证 ---\n');
 if is_unique
-    fprintf('✅ 该连接矩阵A具有拓扑唯一性！\n');
+    fprintf('该连接矩阵A具有拓扑唯一性！\n');
 else
-    fprintf('❌ 警告：该连接矩阵A存在多种拓扑解！\n');
+    fprintf('警告：该连接矩阵A存在多种拓扑解！\n');
 end
 fprintf('===================================\n');
 end
