@@ -1,4 +1,4 @@
-﻿function [Aeq, beq, Aineq, bineq, lb, ub, intcon] = build_constraints(A)
+function [Aeq, beq, Aineq, bineq, lb, ub, intcon] = build_constraints(A)
 
 N = size(A, 1);       % 杆数
 nVars = 4 * N * N;    % v(i,k,j,n) 变量总数
@@ -110,7 +110,5 @@ for i = 1:N
     bineq = [bineq; 0];
 end
 
-%% Constraint 6 removed: previously used `a5` endpoint rule (disabled)
 
-intcon = 1:nVars;
 end
