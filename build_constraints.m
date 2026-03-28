@@ -1,4 +1,4 @@
-﻿function [Aeq, beq, Aineq, bineq, lb, ub, intcon] = build_constraints(A, a5)
+﻿function [Aeq, beq, Aineq, bineq, lb, ub, intcon] = build_constraints(A)
 
 N = size(A, 1);       % 杆数
 nVars = 4 * N * N;    % v(i,k,j,n) 变量总数
@@ -6,17 +6,7 @@ nVars = 4 * N * N;    % v(i,k,j,n) 变量总数
 if size(A, 2) ~= N
     error('A must be an N-by-N square matrix.');
 end
-if nargin < 2 || isempty(a5)
-    error('a5 is required and must be a length-N vector.');
-end
 
-a5 = a5(:);
-if length(a5) ~= N
-    error('a5 length must equal N.');
-end
-if any((a5 ~= 0) & (a5 ~= 1))
-    error('a5 entries must be 0 or 1.');
-end
 
 % 索引函数: v(i,k,j,n), i,j=1..N; k,n=1,2
 idx = @(i,k,j,n) (i-1)*(4*N) + (k-1)*(2*N) + (j-1)*2 + n;
@@ -120,48 +110,7 @@ for i = 1:N
     bineq = [bineq; 0];
 end
 
-%% Constraint 6: use a5 (5th-column rod-endpoint rule)
-% a5(i)=1: both endpoints of rod i must connect to at least one ball
-% a5(i)=0: at most one endpoint of rod i can connect to balls
-for i = 1:N
-    if a5(i) == 1
-        for k = 1:2
-            row = zeros(1, nVars);
-            for j = 1:N
-                if j == i
-                    continue;
-                end
-                for n = 1:2
-                    row(idx(i,k,j,n)) = -1;
-                end
-            end
-            Aineq = [Aineq; row];
-            bineq = [bineq; -1];  % sum(...) >= 1
-        end
-    else
-        % Forbid simultaneous connectivity on both endpoints:
-        % v(i,1,*,*) + v(i,2,*,*) <= 1 for all combinations.
-        for j = 1:N
-            if j == i
-                continue;
-            end
-            for n = 1:2
-                for m = 1:N
-                    if m == i
-                        continue;
-                    end
-                    for p = 1:2
-                        row = zeros(1, nVars);
-                        row(idx(i,1,j,n)) = 1;
-                        row(idx(i,2,m,p)) = 1;
-                        Aineq = [Aineq; row];
-                        bineq = [bineq; 1];
-                    end
-                end
-            end
-        end
-    end
-end
+%% Constraint 6 removed: previously used `a5` endpoint rule (disabled)
 
 intcon = 1:nVars;
 end
