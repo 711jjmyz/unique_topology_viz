@@ -37,16 +37,10 @@ for i = 1:N
     for k = 1:2
         if conn_count(i,k) > 0
             include_endpoint(i,k) = true; % 实际连到其它端点，必然参与小球组
+        elseif a5(i) == 1
+            include_endpoint(i,k) = true; % a5=1 表示两端都有小球
         else
-            if a5(i) == 1
-                include_endpoint(i,k) = true; % a5=1 表示两端都有小球
-            else
-                if total_conn == 0
-                    include_endpoint(i,k) = false; % a5=0 且四个连接变量均为0：既不连杆也不连球
-                else
-                    include_endpoint(i,k) = false; % a5=0 且有部分连接：另一端既不连杆也不连球
-                end
-            end
+            include_endpoint(i,k) = false; % a5=0 且未检测到直接连接：不包含小球
         end
     end
 end
