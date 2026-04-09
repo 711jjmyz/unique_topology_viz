@@ -13,7 +13,7 @@ A = [0 1 0 0 0 0 0 0 0 1;
 	0 0 0 0 0 0 0 1 0 1;
 	1 0 0 0 0 0 0 0 1 0];
 
-a5 = [1;1;1;1;1;1;1;1;1;1;]; 
+a = [1;1;1;1;1;1;1;1;1;1;]; 
 
 % ===== 流程调用 =====
 fprintf('===== Step 1: 构建约束 =====\n');
@@ -23,7 +23,7 @@ fprintf('===== Step 2: ILP求解 =====\n');
 [x_sol, is_unique] = solve_topology(Aeq, beq, Aineq, bineq, lb, ub, intcon, A);
 
 fprintf('===== Step 3: 解析拓扑 =====\n');
-[balls, rods] = parse_topology(x_sol, A, a5);
+[balls, rods] = parse_topology(x_sol, A, a);
 
 fprintf('===== Step 4: 可视化 =====\n');
 visualize_topology(balls, rods, A);

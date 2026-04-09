@@ -110,5 +110,5 @@ for i = 1:N
     bineq = [bineq; 0];
 end
 
-
+intcon = 1:nVars;
 end

@@ -1,4 +1,4 @@
-function [balls, rods] = parse_topology(x_sol, A, a5)
+function [balls, rods] = parse_topology(x_sol, A, a)
 % 解析拓扑：基于 ILP 解 x_sol 和邻接矩阵 A，识别小球（nodes）与杆（rods）关系
 % 说明：
 % - 输入变量索引与 build_constraints 中的定义一致。
@@ -6,7 +6,7 @@ function [balls, rods] = parse_topology(x_sol, A, a5)
 
 N = size(A,1);
 if nargin < 3
-    a5 = zeros(N,1);
+    a = zeros(N,1);
 end
 
 % 索引函数: v(i,k,j,n)
@@ -37,7 +37,7 @@ for i = 1:N
     for k = 1:2
         if conn_count(i,k) > 0
             include_endpoint(i,k) = true; % 实际连到其它端点，必然参与小球组
-        elseif a5(i) == 1
+        elseif a(i) == 1
             include_endpoint(i,k) = true; % a5=1 表示两端都有小球
         else
             include_endpoint(i,k) = false; % a5=0 且未检测到直接连接：不包含小球
